@@ -5,6 +5,7 @@ print("earthview with google batch downloader")
 main_url = "https://earthview.withgoogle.com/"
 starts = int(input("starts at: "))
 stops = int(input("stops at: "))
+check_count = 0
 
 for i in range(starts, stops + 1):
     page = requests.get(main_url + str(i))
@@ -16,5 +17,8 @@ for i in range(starts, stops + 1):
         dosya.write(requests.get(photo_url).content)
         dosya.close()
         print("check")
+        check_count += 1
     else:
         print("nope")
+
+print("{}/{} check".format(check_count, stops - starts + 1))

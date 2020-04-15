@@ -1,11 +1,19 @@
 import requests
 from bs4 import BeautifulSoup
+import os
 
 print("earthview with google batch downloader")
 main_url = "https://earthview.withgoogle.com/"
 starts = int(input("starts at: "))
 stops = int(input("stops at: "))
 check_count = 0
+
+try:
+    os.mkdir("images")
+except:
+    print('folder "images" already exists')
+finally:
+    os.chdir("images")
 
 for i in range(starts, stops + 1):
     page = requests.get(main_url + str(i))

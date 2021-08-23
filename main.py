@@ -1,32 +1,57 @@
-import requests
 from bs4 import BeautifulSoup
 import os
+import asyncio
+from aiohttp import ClientSession
 
-print("earthview with google batch downloader")
+
 main_url = "https://earthview.withgoogle.com/"
-starts = int(input("starts at: "))
-stops = int(input("stops at: "))
-check_count = 0
+loop = asyncio.get_event_loop()
+lock = asyncio.Lock()
+checkCount = 0
 
-try:
-    os.mkdir("images")
-except:
-    print('folder "images" already exists')
-finally:
-    os.chdir("images")
 
-for i in range(starts, stops + 1):
-    page = requests.get(main_url + str(i))
-    print(i, end=": ")
-    if page.status_code == 200:
-        photo = BeautifulSoup(page.content, "html.parser").findAll("img", class_="photo-view--active")[0]
-        photo_url = photo.attrs["src"]
-        dosya = open("{}.jpg".format(i), "wb")
-        dosya.write(requests.get(photo_url).content)
-        dosya.close()
-        print("check")
-        check_count += 1
-    else:
-        print("nope")
+async def DownloadImage(url: str, Count: int):
+    async with ClientSession() as session:
+        async with session.get(url) as resp:
+            with open(f"{Count}.png", "wb") as file:
+                file.write(await resp.read())
+            print(f"write image {Count}")
 
-print("{}/{} check".format(check_count, stops - starts + 1))
+
+async def makeRequest(Count: int):
+    global checkCount
+    async with ClientSession() as session:
+        async with session.get(f"{main_url}/{Count}") as resp:
+            if not resp.status == 200:
+                return
+
+            async with lock:
+                checkCount += 1
+
+            print(f"Found: {Count}")
+            ImageElement = BeautifulSoup(await resp.text(), "html.parser").find(class_="photo-view--active")
+            await DownloadImage(ImageElement["src"], Count)
+
+
+async def main():
+    global checkCount
+    print("earthview with google batch downloader")
+    
+    starts = int(input("starts at: "))
+    stops = int(input("stops at: "))
+
+    try:
+        os.mkdir("images")
+    except:
+        print('folder "images" already exists')
+    finally:
+        os.chdir("images")
+
+    await asyncio.gather(*[makeRequest(count) for count in range(starts, stops+1)])
+    print(f"{checkCount}/{stops - starts} check")
+    loop.stop()
+
+
+if __name__ == "__main__":
+    loop.create_task(main())
+    loop.run_forever()
